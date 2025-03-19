@@ -32,6 +32,7 @@ const TaskManager = () => {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   // Fetch tasks from the API
   const fetchTasks = useCallback(async () => {
@@ -107,6 +108,12 @@ const TaskManager = () => {
   // Handle view change
   const handleViewChange = (view: ViewType) => {
     setCurrentView(view);
+  };
+
+  // Handle date click - switches to daily view for the clicked date
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setCurrentView('daily');
   };
 
   // Toggle display mode between list and calendar
@@ -189,81 +196,63 @@ const TaskManager = () => {
     <div className="task-manager">
       <h1>Task Manager</h1>
       
-      {error && <div className="error-message">{error}</div>}
-      
-      <div className="view-controls">
-        <button 
-          className={`display-mode-toggle ${displayMode === 'calendar' ? 'active' : ''}`}
-          onClick={toggleDisplayMode}
-        >
-          {displayMode === 'list' ? 'Calendar View' : 'List View'}
-        </button>
-        
+      <div className="controls">
         <Tabs
           tabs={[
             { id: 'daily', label: 'Daily' },
             { id: 'weekly', label: 'Weekly' },
             { id: 'monthly', label: 'Monthly' },
-            { id: 'yearly', label: 'Yearly' }
+            { id: 'yearly', label: 'Yearly' },
           ]}
           activeTab={currentView}
           onTabChange={handleViewChange}
         />
+        <div className="display-toggles">
+          <button 
+            className={`display-toggle ${displayMode === 'calendar' ? 'active' : ''}`} 
+            onClick={toggleDisplayMode}
+          >
+            {displayMode === 'calendar' ? '📅 Calendar' : '📋 List'}
+          </button>
+          
+          <select 
+            className="priority-filter" 
+            value={priorityFilter} 
+            onChange={(e) => handlePriorityChange(e.target.value as PriorityFilter)}
+          >
+            <option value="all">All Priorities</option>
+            <option value="high">High Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="low">Low Priority</option>
+          </select>
+        </div>
       </div>
       
-      <div className="task-manager-container">
-        <div className="left-panel">
-          <div className="priority-filter">
-            <h3>Filter by Priority</h3>
-            <div className="priority-buttons">
-              <button 
-                className={`priority-btn ${priorityFilter === 'all' ? 'active' : ''}`}
-                onClick={() => handlePriorityChange('all')}
-              >
-                All
-              </button>
-              <button 
-                className={`priority-btn priority-high ${priorityFilter === 'high' ? 'active' : ''}`}
-                onClick={() => handlePriorityChange('high')}
-              >
-                High
-              </button>
-              <button 
-                className={`priority-btn priority-medium ${priorityFilter === 'medium' ? 'active' : ''}`}
-                onClick={() => handlePriorityChange('medium')}
-              >
-                Medium
-              </button>
-              <button 
-                className={`priority-btn priority-low ${priorityFilter === 'low' ? 'active' : ''}`}
-                onClick={() => handlePriorityChange('low')}
-              >
-                Low
-              </button>
-            </div>
-          </div>
-          
-          <TaskSummary tasks={filteredTasks} updateTask={updateTask} deleteTask={deleteTask} />
-        </div>
-        
-        <div className="right-panel">
-          {loading ? (
-            <div className="loading-message">Loading tasks...</div>
-          ) : displayMode === 'list' ? (
+      {error && <div className="error-message">{error}</div>}
+      
+      {loading ? (
+        <div className="loading">Loading tasks...</div>
+      ) : (
+        <>
+          {displayMode === 'list' ? (
             <TaskList 
               tasks={filteredTasks} 
               updateTask={updateTask} 
               deleteTask={deleteTask}
             />
           ) : (
-            <CalendarView 
-              tasks={filteredTasks} 
+            <CalendarView
+              tasks={tasks}
               currentView={currentView}
               addTask={addTask}
+              onDateClick={handleDateClick}
+              selectedDate={selectedDate}
             />
           )}
-        </div>
-      </div>
+          
+          <TaskSummary tasks={tasks} updateTask={updateTask} deleteTask={deleteTask} />
+        </>
+      )}
     </div>
   );
 };

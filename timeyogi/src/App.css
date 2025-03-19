@@ -1611,3 +1611,27 @@ input, textarea, select {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Add styles for clickable calendar days */
+.week-day.clickable {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.week-day.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa;
+}
+
+.month-day.clickable {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.month-day.clickable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa;
+  z-index: 1;
+}

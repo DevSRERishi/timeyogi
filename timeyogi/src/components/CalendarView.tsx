@@ -17,6 +17,8 @@ interface CalendarViewProps {
   tasks: Task[];
   currentView: ViewType;
   addTask?: (task: Task) => void; // Make addTask optional
+  onDateClick?: (date: Date) => void; // Add new prop for date click
+  selectedDate?: Date; // Add selected date prop
 }
 
 // Helper function to get completion color based on task completion percentage
@@ -31,9 +33,9 @@ const getCompletionColor = (tasks: Task[]): string => {
   return 'low-completion'; // Orange for low completion (<30%)
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask, onDateClick, selectedDate }) => {
   const [calendarDays, setCalendarDays] = useState<Date[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
   const [tasksByDate, setTasksByDate] = useState<Record<string, Task[]>>({});
   const [completionByDate, setCompletionByDate] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -52,64 +54,57 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask
     console.log('CalendarView received tasks:', tasks);
   }, [tasks]);
 
-  // Generate calendar days based on the current view
+  // Generate calendar days based on current view and date
   useEffect(() => {
     setIsLoading(true);
-    const now = new Date(currentDate);
-    const days: Date[] = [];
-
+    let days: Date[] = [];
+    
     switch (currentView) {
       case 'daily':
-        // For daily view, just show the current day
-        days.push(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+        // Just one day for daily view - the selected date or current date
+        days = [new Date(currentDate)];
         break;
-
+        
       case 'weekly':
-        // For weekly view, show 7 days starting from the beginning of the week
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay()); // Start from Sunday
+        // Get start of week (Sunday)
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+        
+        // Generate 7 days from Sunday to Saturday
         for (let i = 0; i < 7; i++) {
           const day = new Date(startOfWeek);
           day.setDate(startOfWeek.getDate() + i);
           days.push(day);
         }
         break;
-
+        
       case 'monthly':
-        // For monthly view, show all days in the current month
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
+        // Get first day of month
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         
-        // Add days from previous month to fill the first week
+        // Get the day of week for the first day (0 = Sunday, 6 = Saturday)
         const firstDayOfWeek = firstDay.getDay();
-        for (let i = 0; i < firstDayOfWeek; i++) {
-          const day = new Date(year, month, 1 - (firstDayOfWeek - i));
-          days.push(day);
-        }
         
-        // Add all days in the current month
-        for (let i = 1; i <= lastDay.getDate(); i++) {
-          days.push(new Date(year, month, i));
-        }
+        // Calculate the date to start the calendar (previous month's days to fill the first week)
+        const startDate = new Date(firstDay);
+        startDate.setDate(firstDay.getDate() - firstDayOfWeek);
         
-        // Add days from next month to fill the last week
-        const lastDayOfWeek = lastDay.getDay();
-        for (let i = 1; i < 7 - lastDayOfWeek; i++) {
-          const day = new Date(year, month + 1, i);
+        // Generate 42 days (6 weeks) to ensure we always have enough days to display
+        for (let i = 0; i < 42; i++) {
+          const day = new Date(startDate);
+          day.setDate(startDate.getDate() + i);
           days.push(day);
         }
         break;
-
+        
       case 'yearly':
-        // For yearly view, show all months in the current year
-        for (let i = 0; i < 12; i++) {
-          days.push(new Date(now.getFullYear(), i, 15)); // Middle of each month
+        // Get first day of each month for the current year
+        for (let month = 0; month < 12; month++) {
+          days.push(new Date(currentDate.getFullYear(), month, 1));
         }
         break;
     }
-
+    
     setCalendarDays(days);
     setIsLoading(false);
   }, [currentView, currentDate]);
@@ -519,7 +514,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask
               {calendarDays.map((day, index) => (
                 <div 
                   key={index} 
-                  className={`week-day ${isToday(day) ? 'today' : ''} ${getCompletionClass(day)}`}
+                  className={`week-day ${isToday(day) ? 'today' : ''} ${getCompletionClass(day)} ${onDateClick ? 'clickable' : ''}`}
+                  onClick={() => onDateClick && onDateClick(day)}
                 >
                   <div className="day-header">
                     <h3>{formatDate(day)}</h3>
@@ -568,7 +564,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask
               {calendarDays.map((day, index) => (
                 <div 
                   key={index} 
-                  className={`month-day ${isToday(day) ? 'today' : ''} ${isCurrentMonth(day) ? 'current-month' : 'other-month'} ${getCompletionClass(day)}`}
+                  className={`month-day ${isToday(day) ? 'today' : ''} ${isCurrentMonth(day) ? 'current-month' : 'other-month'} ${getCompletionClass(day)} ${onDateClick ? 'clickable' : ''}`}
+                  onClick={() => onDateClick && onDateClick(day)}
                 >
                   <div className="day-number">{day.getDate()}</div>
                   <div className="day-tasks">
@@ -646,6 +643,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, currentView, addTask
         return <div className="loading-calendar">Invalid view type</div>;
     }
   };
+
+  // When selected date changes, update the currentDate
+  useEffect(() => {
+    if (selectedDate) {
+      setCurrentDate(selectedDate);
+    }
+  }, [selectedDate]);
 
   return (
     <div className="calendar-view">
